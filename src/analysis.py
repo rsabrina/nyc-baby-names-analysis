@@ -84,6 +84,11 @@ data = pd.read_csv("data/Popular_Baby_Names.csv")
 cols = [c for c in ["Year of Birth", "Gender", "Ethnicity", "Count", "Rank"] if c in data.columns]
 df = data[cols].dropna()
 
+for c in ["Year of Birth", "Count", "Rank"]:
+    if c in df.columns:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+df = df.dropna(subset=[c for c in ["Year of Birth", "Count", "Rank"] if c in df.columns])
+
 if "Gender" in df.columns:
     corr_by_gender = df.groupby("Gender")[["Count", "Rank"]].corr().iloc[0::2, -1]
     print("\nCount vs Rank correlation by Gender:")
@@ -95,8 +100,14 @@ if "Ethnicity" in df.columns:
 
 X_cols = [c for c in ["Count", "Year of Birth", "Gender", "Ethnicity"] if c in df.columns]
 X = pd.get_dummies(df[X_cols], drop_first=True)
+X = X.apply(pd.to_numeric, errors="coerce").astype(float)
 X = sm.add_constant(X)
-y = df["Rank"]
+y = pd.to_numeric(df["Rank"], errors="coerce").astype(float)
+
+mask = X.notna().all(axis=1) & y.notna()
+X = X.loc[mask]
+y = y.loc[mask]
+
 
 model_multi = sm.OLS(y, X).fit()
 print("\nMultiple Regression (Rank ~ Count + Year + Gender + Ethnicity) Summary:")
